@@ -5,12 +5,24 @@ Tell the difference between a strategy that works and one you found.
 A backtest that looks good proves almost nothing on its own. If you tried 200 parameter
 combinations, the best of them looks good even when the data contains no signal at all.
 `luck-filter` is a zero-dependency Python 3.9+ statistical backtest-overfitting and
-multiple-testing tool — plus a self-contained offline HTML companion (`skill-or-luck.html`) —
+multiple-testing tool — plus a self-contained offline HTML companion (`skill-or-luck.html`,
+also [live in the browser](https://kilianthemagnificent.github.io/luck-filter/)) —
 that prices that selection bias in.
 
 ## Quick start
 
-Requires Python 3.9 or newer. No packages, no virtual environment, and no install step.
+Requires Python 3.9 or newer. Zero third-party dependencies.
+
+Run directly without cloning using `uvx` or install as a CLI with `pipx`:
+
+```sh
+uvx --from git+https://github.com/KilianTheMagnificent/luck-filter luck-filter --demo
+# or install permanently:
+pipx install git+https://github.com/KilianTheMagnificent/luck-filter
+luck-filter --demo
+```
+
+Or run with zero install step from a local clone:
 
 ```sh
 git clone https://github.com/KilianTheMagnificent/luck-filter.git
@@ -24,8 +36,9 @@ by construction — with a 190-configuration parameter sweep, keeps the winner, 
 apart. Across seeds 1–25 the median best-of-190 Sharpe on that worthless data is **1.14**, and
 no seed produced a deflated Sharpe above 0.95.
 
-To explore the argument interactively in a browser (offline, zero network requests), open
-`skill-or-luck.html` directly from the cloned folder.
+To explore the argument interactively in a browser, visit the
+[live interactive explainer](https://kilianthemagnificent.github.io/luck-filter/) or open
+`skill-or-luck.html` directly from the cloned folder (offline, zero network requests).
 
 ## Usage
 
@@ -233,12 +246,14 @@ position.
 
 - `luckfilter.py` — the whole tool
 - `test_luckfilter.py` — the 55 self-checks above
-- `skill-or-luck.html` — an interactive version of the argument, self-contained, no network
+- `skill-or-luck.html` — an interactive version of the argument, self-contained, no network ([live version](https://kilianthemagnificent.github.io/luck-filter/))
+- `pyproject.toml` — minimal packaging metadata for `uvx` / `pipx` / `pip` installs
 
 ## Contributing & Security
 
 Bug reports and reproducible test cases are welcome through issues; outside pull requests are
-turned off. See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
+turned off. See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md),
+and [SECURITY.md](SECURITY.md).
 
 ## License
 

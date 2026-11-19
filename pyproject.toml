@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "luck-filter"
+version = "1.0.0"
+description = "Tell the difference between a strategy that works and one you found."
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+  {name = "Andre Romero"},
+]
+requires-python = ">=3.9"
+dependencies = []
+keywords = [
+  "backtest",
+  "overfitting",
+  "sharpe-ratio",
+  "deflated-sharpe-ratio",
+  "statistics",
+  "quantitative-finance",
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Console",
+  "Intended Audience :: Financial and Insurance Industry",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Mathematics",
+]
+
+[project.urls]
+Homepage = "https://github.com/KilianTheMagnificent/luck-filter"
+Repository = "https://github.com/KilianTheMagnificent/luck-filter"
+Issues = "https://github.com/KilianTheMagnificent/luck-filter/issues"
+Documentation = "https://kilianthemagnificent.github.io/luck-filter/"
+
+[project.scripts]
+luck-filter = "luckfilter:main"
+
+[tool.setuptools]
+py-modules = ["luckfilter"]
