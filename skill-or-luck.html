@@ -1,0 +1,728 @@
+<title>Skill or Luck</title>
+<style>
+:root{
+  --ground:#F4F5F7; --surface:#FFFFFF; --surface-2:#EDEFF3;
+  --ink:#111418; --muted:#697180; --faint:#9AA2AE;
+  --rule:#DCE0E6; --rule-strong:#C3CAD3;
+  --gold:#9E6F12; --gold-soft:#E8D7A8; --gold-line:#B98F26;
+  --blood:#98302E; --teal:#0E6E66; --graphite:#B4BBC4;
+  --shadow:0 1px 2px rgba(16,20,26,.06),0 8px 24px -12px rgba(16,20,26,.18);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0E1116; --surface:#151A21; --surface-2:#1B222B;
+    --ink:#E6E9EE; --muted:#98A1AE; --faint:#6B7482;
+    --rule:#242B35; --rule-strong:#333C48;
+    --gold:#E3B04B; --gold-soft:#4A3A18; --gold-line:#E3B04B;
+    --blood:#EF8886; --teal:#54CFC2; --graphite:#39414C;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0E1116; --surface:#151A21; --surface-2:#1B222B;
+  --ink:#E6E9EE; --muted:#98A1AE; --faint:#6B7482;
+  --rule:#242B35; --rule-strong:#333C48;
+  --gold:#E3B04B; --gold-soft:#4A3A18; --gold-line:#E3B04B;
+  --blood:#EF8886; --teal:#54CFC2; --graphite:#39414C;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"Iowan Old Style","Charter","Bitstream Charter",Georgia,"Times New Roman",serif;
+  font-size:17px; line-height:1.62; -webkit-font-smoothing:antialiased;
+}
+.sans{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","Segoe UI",Roboto,system-ui,sans-serif}
+.mono,code{font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+.col{max-width:64ch;margin:0 auto}
+p{margin:0 0 1.1em}
+a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--gold-line);text-underline-offset:3px}
+:focus-visible{outline:2px solid var(--gold-line);outline-offset:3px;border-radius:2px}
+
+.eyebrow{
+  font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+  margin:0 0 14px;
+}
+h1{
+  font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","Segoe UI",Roboto,system-ui,sans-serif;
+  font-weight:800;letter-spacing:-.035em;line-height:.98;
+  font-size:clamp(44px,8.4vw,92px);margin:0 0 .35em;text-wrap:balance;
+}
+h2{
+  font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","Segoe UI",Roboto,system-ui,sans-serif;
+  font-weight:700;letter-spacing:-.022em;font-size:clamp(26px,3.4vw,36px);
+  line-height:1.12;margin:0 0 .5em;text-wrap:balance;
+}
+h3{
+  font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);
+  font-weight:400;margin:0 0 16px;
+}
+.lede{font-size:20px;line-height:1.55;color:var(--muted)}
+.lede strong{color:var(--ink);font-weight:400}
+
+/* ---- hero ---- */
+header.hero{
+  border-bottom:1px solid var(--rule);
+  background:
+    linear-gradient(var(--ground) 0 0) padding-box,
+    repeating-linear-gradient(0deg,transparent 0 31px,var(--rule) 31px 32px),
+    repeating-linear-gradient(90deg,transparent 0 31px,var(--rule) 31px 32px);
+  background-blend-mode:normal;
+  position:relative;overflow:hidden;
+}
+header.hero::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent 0 31px,var(--rule) 31px 32px),
+             repeating-linear-gradient(90deg,transparent 0 31px,var(--rule) 31px 32px);
+  opacity:.5;
+  -webkit-mask-image:radial-gradient(120% 90% at 50% 0%,#000 0%,transparent 70%);
+  mask-image:radial-gradient(120% 90% at 50% 0%,#000 0%,transparent 70%);
+}
+header.hero .wrap{position:relative;padding-top:64px;padding-bottom:8px}
+
+.stage{margin:36px 0 0;border:1px solid var(--rule);background:var(--surface);box-shadow:var(--shadow)}
+.stage-head{
+  display:flex;flex-wrap:wrap;gap:18px 28px;align-items:baseline;
+  padding:16px 20px;border-bottom:1px solid var(--rule);
+}
+.readout{display:flex;flex-direction:column;gap:2px}
+.readout .k{
+  font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);
+}
+.readout .v{
+  font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:26px;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1;
+}
+.readout .v.gold{color:var(--gold)}
+.readout .v.small{font-size:17px}
+.stage canvas{display:block;width:100%;height:340px}
+.stage-foot{
+  display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;
+  padding:14px 20px;border-top:1px solid var(--rule);background:var(--surface-2);
+}
+.legend{display:flex;gap:18px;flex-wrap:wrap;
+  font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:11px;letter-spacing:.06em;color:var(--muted)}
+.legend i{display:inline-block;width:16px;height:2px;vertical-align:middle;margin-right:7px}
+
+button{
+  font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:11px;letter-spacing:.13em;text-transform:uppercase;
+  background:var(--ink);color:var(--ground);border:0;padding:10px 16px;cursor:pointer;
+}
+button:hover{opacity:.86}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--rule-strong)}
+
+/* ---- sections ---- */
+section{padding:76px 0}
+section+section{border-top:1px solid var(--rule)}
+.panel{
+  margin:32px 0 0;border:1px solid var(--rule);background:var(--surface);
+  box-shadow:var(--shadow);
+}
+.panel-body{padding:22px 20px}
+.grid2{display:grid;grid-template-columns:minmax(260px,1fr) minmax(280px,1.25fr);gap:0}
+@media (max-width:760px){.grid2{grid-template-columns:1fr}}
+.controls{padding:22px 20px;border-right:1px solid var(--rule)}
+@media (max-width:760px){.controls{border-right:0;border-bottom:1px solid var(--rule)}}
+.results{padding:22px 20px}
+
+.field{margin:0 0 18px}
+.field label{
+  display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+  font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+  margin-bottom:7px;
+}
+.field label b{color:var(--ink);font-weight:400;font-variant-numeric:tabular-nums;font-size:13px}
+input[type=range]{width:100%;accent-color:var(--gold-line);margin:0}
+.hint{font-size:12.5px;line-height:1.45;color:var(--faint);margin:-8px 0 18px}
+
+.stat{display:flex;justify-content:space-between;align-items:baseline;gap:14px;
+  padding:9px 0;border-bottom:1px dotted var(--rule)}
+.stat:last-child{border-bottom:0}
+.stat .k{
+  font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.stat .v{
+  font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:16px;font-variant-numeric:tabular-nums}
+.stat .v.gold{color:var(--gold)}
+.stat .v.bad{color:var(--blood)}
+.stat .v.good{color:var(--teal)}
+
+.chip{
+  display:inline-flex;align-items:center;gap:9px;margin-top:18px;padding:9px 14px;
+  font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:12px;letter-spacing:.13em;text-transform:uppercase;
+  border:1px solid currentColor;
+}
+.chip.bad{color:var(--blood)} .chip.good{color:var(--teal)} .chip.warn{color:var(--gold)}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+
+.bars{margin-top:6px}
+.bar-row{margin:0 0 20px}
+.bar-label{
+  display:flex;justify-content:space-between;
+  font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.track{position:relative;height:30px;background:var(--surface-2);border:1px solid var(--rule)}
+.track .zero{position:absolute;top:-4px;bottom:-4px;width:1px;background:var(--rule-strong)}
+.track .zero span{
+  position:absolute;top:-15px;left:50%;transform:translateX(-50%);
+  font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:9.5px;color:var(--faint);letter-spacing:.08em}
+.track .ci{position:absolute;top:8px;height:14px;border:1px solid currentColor;
+  background:currentColor;opacity:.9}
+.track .ci.naive{color:var(--blood)}
+.track .ci.honest{color:var(--teal)}
+.track .pt{position:absolute;top:4px;height:22px;width:2px;background:var(--ink)}
+
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+.scroller{overflow-x:auto}
+th,td{text-align:left;padding:9px 12px 9px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:400}
+td.num{font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+
+pre{
+  font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:13px;line-height:1.6;background:var(--surface);border:1px solid var(--rule);
+  padding:16px 18px;overflow-x:auto;margin:0 0 20px}
+code{font-size:.92em;background:var(--surface-2);padding:1px 5px;border:1px solid var(--rule)}
+pre code{background:none;border:0;padding:0}
+
+footer{border-top:1px solid var(--rule);padding:44px 0 64px;color:var(--muted);font-size:14px}
+.refs{font-size:13.5px;line-height:1.7;color:var(--muted)}
+.refs b{color:var(--ink);font-weight:400}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="col" style="max-width:none">
+      <p class="eyebrow">A demonstration you can run yourself</p>
+      <h1>Skill,<br>or luck?</h1>
+      <p class="lede col" style="margin:0 0 6px 0">
+        Below is a search over a market that contains <strong>no signal at all</strong> —
+        a random walk with zero drift, built in your browser. Each strategy is a
+        different way of trading that noise. Watch the best one get better.
+      </p>
+    </div>
+
+    <div class="stage">
+      <div class="stage-head">
+        <div class="readout"><span class="k">Strategies searched</span><span class="v" id="r-n">0</span></div>
+        <div class="readout"><span class="k">Best Sharpe found</span><span class="v gold" id="r-sr">—</span></div>
+        <div class="readout"><span class="k">Median strategy</span><span class="v small" id="r-med">—</span></div>
+        <div class="readout"><span class="k">True signal in the data</span><span class="v small" id="r-true">zero</span></div>
+      </div>
+      <canvas id="mine" width="1600" height="680" aria-label="Equity curves of strategies trading pure noise; the best one so far is highlighted"></canvas>
+      <div class="stage-foot">
+        <div class="legend">
+          <span><i style="background:var(--graphite)"></i>rejected strategies</span>
+          <span><i style="background:var(--gold-line)"></i>best so far</span>
+          <span><i style="background:var(--rule-strong)"></i>break-even</span>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button id="again" class="ghost">New market</button>
+          <button id="more">Search 100 more</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap"><div class="col">
+    <h2>Nothing there was real.</h2>
+    <p>
+      Every curve you just watched was generated from the same worthless data. There was
+      no edge to find, because the price series was drawn from a coin flip. And yet a few
+      hundred attempts produced a strategy with a Sharpe ratio most people would call
+      publishable, and one or two would call a career.
+    </p>
+    <p>
+      This is not a trick of the simulation. It is arithmetic. Run 190 configurations over
+      three years of noise and the <em>median</em> outcome — not the lucky tail, the median —
+      is a best-of-grid Sharpe near <strong>1.14</strong>. Half of all such searches do better
+      than that on data with nothing in it.
+    </p>
+    <p>
+      The number that misleads you is not the Sharpe ratio. It is the number of things you
+      tried before you kept one, and that number never appears in the backtest.
+    </p>
+  </div></div>
+</section>
+
+<section>
+  <div class="wrap"><div class="col">
+    <h2>Price your own result.</h2>
+    <p>
+      The deflated Sharpe ratio asks a single question: given how hard you looked, how good
+      would the best result look if nothing worked? Then it asks whether yours beat that, and
+      by enough to matter. Put your own backtest in.
+    </p>
+  </div>
+
+  <div class="panel grid2">
+    <div class="controls">
+      <h3>Your backtest</h3>
+      <div class="field">
+        <label for="i-sr">Sharpe ratio, annualised <b id="o-sr">2.50</b></label>
+        <input type="range" id="i-sr" min="0" max="5" step="0.05" value="2.5">
+      </div>
+      <div class="field">
+        <label for="i-yr">Years of daily data <b id="o-yr">5.0</b></label>
+        <input type="range" id="i-yr" min="0.5" max="20" step="0.5" value="5">
+      </div>
+      <div class="field">
+        <label for="i-n">Configurations you tried <b id="o-n">100</b></label>
+        <input type="range" id="i-n" min="1" max="1000" step="1" value="100">
+      </div>
+      <p class="hint">
+        Count honestly: every parameter combination, every universe, every time you looked
+        at the result and went back to change something. Nobody ever tried it once.
+      </p>
+      <div class="field">
+        <label for="i-sk">Skew of returns <b id="o-sk">-3.00</b></label>
+        <input type="range" id="i-sk" min="-5" max="5" step="0.1" value="-3">
+      </div>
+      <div class="field">
+        <label for="i-ku">Kurtosis of returns <b id="o-ku">10.0</b></label>
+        <input type="range" id="i-ku" min="1.5" max="25" step="0.1" value="10">
+      </div>
+      <p class="hint" style="margin-bottom:0">
+        A Gaussian has kurtosis 3. Negative skew and fat tails mean the Sharpe ratio is
+        measured less precisely than it looks, so the same number proves less.
+      </p>
+    </div>
+    <div class="results">
+      <h3>What survives</h3>
+      <div class="stat"><span class="k">Probabilistic Sharpe, one look</span><span class="v gold" id="o-psr">—</span></div>
+      <div class="stat"><span class="k">Best Sharpe from pure noise</span><span class="v" id="o-bar">—</span></div>
+      <div class="stat"><span class="k">Deflated Sharpe ratio</span><span class="v" id="o-dsr">—</span></div>
+      <div class="stat"><span class="k">Track record needed</span><span class="v" id="o-trl">—</span></div>
+      <div class="stat"><span class="k">Attempts that would explain it</span><span class="v" id="o-be">—</span></div>
+      <div id="o-chip" class="chip bad"><span class="dot"></span><span>—</span></div>
+      <p class="hint" id="o-note" style="margin:16px 0 0"></p>
+      <p class="hint" style="margin:14px 0 0;padding-top:12px;border-top:1px dotted var(--rule)">
+        One assumption you cannot see: the Sharpe ratios across your attempts are taken to
+        have spread 0.5 annualised, the value used in the source paper&rsquo;s own example. A
+        grid whose configurations differ more than that raises the noise threshold and makes
+        the verdict harsher than what you see here.
+      </p>
+    </div>
+  </div>
+
+  <div class="col" style="margin-top:34px">
+    <p>
+      The defaults are the worked example from the paper that introduced the statistic: a
+      2.5 Sharpe over five years, found after 100 attempts, on returns with the negative skew
+      and fat tails a real strategy has. It does <em>not</em> clear the bar. The paper's own
+      conclusion is that this discovery would have had to come after no more than 46
+      independent attempts to count as evidence — and the calculator puts the breakeven at
+      47. Drag the attempts slider to 250 and a career-making number falls to 0.81.
+    </p>
+  </div></div>
+</section>
+
+<section>
+  <div class="wrap"><div class="col">
+    <h2>The second trap: counting the same day twice.</h2>
+    <p>
+      Prediction ledgers fail differently. If you forecast 40 tickers every morning, a year
+      of work looks like 10,000 calls. It isn't. When the market rallies, most of your "up"
+      calls are right <em>at the same time, for the same reason</em>. Those 40 rows are one
+      observation wearing forty hats.
+    </p>
+  </div>
+
+  <div class="panel grid2">
+    <div class="controls">
+      <h3>Your ledger</h3>
+      <div class="field">
+        <label for="c-d">Trading days <b id="oc-d">250</b></label>
+        <input type="range" id="c-d" min="20" max="500" step="5" value="250">
+      </div>
+      <div class="field">
+        <label for="c-m">Predictions per day <b id="oc-m">40</b></label>
+        <input type="range" id="c-m" min="1" max="80" step="1" value="40">
+      </div>
+      <div class="field">
+        <label for="c-p">Hit rate <b id="oc-p">0.545</b></label>
+        <input type="range" id="c-p" min="0.40" max="0.75" step="0.005" value="0.545">
+      </div>
+      <div class="field">
+        <label for="c-r">Same-day correlation <b id="oc-r">0.30</b></label>
+        <input type="range" id="c-r" min="0" max="1" step="0.01" value="0.3">
+      </div>
+      <p class="hint" style="margin-bottom:0">
+        How much the calls you make on one morning stand or fall together. For equity
+        direction it is rarely below 0.2, because every name shares the market factor.
+      </p>
+    </div>
+    <div class="results">
+      <h3>How much evidence you actually have</h3>
+      <div class="stat"><span class="k">Predictions in the ledger</span><span class="v" id="oc-n">—</span></div>
+      <div class="stat"><span class="k">Design effect</span><span class="v" id="oc-deff">—</span></div>
+      <div class="stat"><span class="k">Effective sample size</span><span class="v gold" id="oc-neff">—</span></div>
+      <div class="bars" style="margin-top:20px">
+        <div class="bar-row">
+          <div class="bar-label"><span>95% interval, counting every row</span><span id="oc-cin">—</span></div>
+          <div class="track" id="track-n"><span class="zero"><span>0.50</span></span><span class="ci naive"></span></div>
+        </div>
+        <div class="bar-row" style="margin-bottom:6px">
+          <div class="bar-label"><span>95% interval, counting days</span><span id="oc-cih">—</span></div>
+          <div class="track" id="track-h"><span class="zero"><span>0.50</span></span><span class="ci honest"></span></div>
+        </div>
+      </div>
+      <div id="oc-chip" class="chip bad"><span class="dot"></span><span>—</span></div>
+    </div>
+  </div>
+
+  <div class="col" style="margin-top:34px">
+    <p>
+      There is a third trap this page does not simulate, and it is the most common of all: a
+      hit rate above 50% in a market that rose 58% of the time. A forecaster who says "up"
+      every single day scores 58% while carrying no information whatsoever. The fix is the
+      Pesaran–Timmermann test, which compares your hit rate against the one your own
+      directional bias earns for free. The command-line tool runs it; a spreadsheet won't.
+    </p>
+  </div></div>
+</section>
+
+<section>
+  <div class="wrap"><div class="col">
+    <h2>The tool.</h2>
+    <p>
+      This page is the argument. <code>luckfilter.py</code> is the instrument — one file,
+      no dependencies, no install. It runs the demonstration above on real data and prints a
+      verdict card.
+    </p>
+    <pre><code>python3 luckfilter.py --demo                    <span style="color:var(--faint)"># mine noise, watch it die</span>
+python3 luckfilter.py returns.csv --trials 200  <span style="color:var(--faint)"># one series, declare the search</span>
+python3 luckfilter.py grid.csv                  <span style="color:var(--faint)"># many columns, many candidates</span>
+python3 luckfilter.py calls.csv --directional   <span style="color:var(--faint)"># a ledger of up/down calls</span></code></pre>
+    <p>What it runs, and where each test comes from:</p>
+    <div class="scroller">
+    <table>
+      <thead><tr><th>Test</th><th>Answers</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td class="num">PSR</td><td>Is the Sharpe above zero, allowing for skew and fat tails?</td><td>Bailey &amp; López de Prado 2012</td></tr>
+        <tr><td class="num">DSR</td><td>Is it above what the best of N worthless attempts would score?</td><td>Bailey &amp; López de Prado 2014</td></tr>
+        <tr><td class="num">MinTRL</td><td>How long a record would settle it?</td><td>Bailey &amp; López de Prado 2012</td></tr>
+        <tr><td class="num">PBO</td><td>Does picking the in-sample winner generalise, or is it a coin flip?</td><td>Bailey, Borwein, López de Prado &amp; Zhu 2016</td></tr>
+        <tr><td class="num">Reality Check</td><td>Could a search this wide produce a winner this good by chance?</td><td>White 2000</td></tr>
+        <tr><td class="num">SPA</td><td>Same question, robust to padding the search with junk.</td><td>Hansen 2005</td></tr>
+        <tr><td class="num">Pesaran–Timmermann</td><td>Is the hit rate better than your own bias earns for free?</td><td>Pesaran &amp; Timmermann 1992</td></tr>
+        <tr><td class="num">Henriksson–Merton</td><td>The same, exactly, when the sample is small.</td><td>Henriksson &amp; Merton 1981</td></tr>
+        <tr><td class="num">Design effect</td><td>How many independent observations do you really have?</td><td>Kish 1965; Donner 1986</td></tr>
+        <tr><td class="num">Murphy decomposition</td><td>Do your stated confidences mean anything?</td><td>Murphy 1973</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p style="margin-top:26px">
+      A warning that applies to the whole enterprise. Passing these checks does not mean a
+      strategy works. It means one specific way of being wrong has been ruled out. The
+      deflated Sharpe in particular is only as honest as the trial count you feed it, and
+      that number lives in your memory, not in your data.
+    </p>
+  </div></div>
+</section>
+
+<footer>
+  <div class="wrap"><div class="col">
+    <p class="refs">
+      The demonstration above generates its own data: a geometric random walk with zero
+      drift, and strategies that are persistent random position sequences applied to it.
+      Nothing is fetched, nothing is stored. The statistics are the same formulas the
+      command-line tool implements. Run at the paper's own conventions — a 250-day year and
+      1,250 observations — both reproduce the published worked example of
+      <b>Bailey &amp; López de Prado (2014)</b> to the printed digit: expected best-of-100
+      Sharpe 0.1132, deflated Sharpe 0.9004, breakeven at 47 attempts. The calculator above
+      uses a 252-day year, so it reads 0.9006 rather than 0.9004; the breakeven is 47 either
+      way.
+    </p>
+  </div></div>
+</footer>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- normal distribution: Hart (1968) CDF, Acklam inverse + one Halley step
+   Round-trips to 3e-16; reproduces the published DSR example to 12 decimals. ---------- */
+function phi(z){
+  var c=Math.abs(z),e;
+  if(c>37){e=0;}
+  else{
+    var x=Math.exp(-c*c/2);
+    if(c<7.07106781186547){
+      e=3.52624965998911e-02*c+0.700383064443688; e=e*c+6.37396220353165;
+      e=e*c+33.912866078383; e=e*c+112.079291497871; e=e*c+221.213596169931;
+      e=e*c+220.206867912376;
+      var d=8.83883476483184e-02*c+1.75566716318264;
+      d=d*c+16.064177579207; d=d*c+86.7807322029461; d=d*c+296.564248779674;
+      d=d*c+637.333633378831; d=d*c+793.826512519948; d=d*c+440.413735824752;
+      e=x*e/d;
+    } else {
+      var q=c+1/(c+2/(c+3/(c+4/(c+0.65))));
+      e=x/(q*2.506628274631);
+    }
+  }
+  return z>0?1-e:e;
+}
+function phiInv(p){
+  if(!(p>0&&p<1))return p<=0?-Infinity:Infinity;
+  var a=[-3.969683028665376e+01,2.209460984245205e+02,-2.759285104469687e+02,
+         1.383577518672690e+02,-3.066479806614716e+01,2.506628277459239e+00],
+      b=[-5.447609879822406e+01,1.615858368580409e+02,-1.556989798598866e+02,
+         6.680131188771972e+01,-1.328068155288572e+01],
+      c=[-7.784894002430293e-03,-3.223964580411365e-01,-2.400758277161838e+00,
+         -2.549732539343734e+00,4.374664141464968e+00,2.938163982698783e+00],
+      d=[7.784695709041462e-03,3.224671290700398e-01,2.445134137142996e+00,
+         3.754408661907416e+00],
+      lo=0.02425,q,r,x;
+  if(p<lo){q=Math.sqrt(-2*Math.log(p));
+    x=(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
+  else if(p<=1-lo){q=p-0.5;r=q*q;
+    x=(((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q/
+      (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);}
+  else{q=Math.sqrt(-2*Math.log(1-p));
+    x=-(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
+  var e=phi(x)-p,u=e*Math.sqrt(2*Math.PI)*Math.exp(x*x/2);
+  return x-u/(1+x*u/2);
+}
+var EULER=0.5772156649015329, K=252;
+
+/* Everything below is per-period. Kurtosis is RAW: a Gaussian is 3, not 0. */
+function varianceFactor(sr,g3,g4){return 1-g3*sr+((g4-1)/4)*sr*sr;}
+function psr(sr,star,T,g3,g4){
+  if(sr===star)return 0.5;
+  var f=varianceFactor(sr,g3,g4);
+  if(f<=0)return NaN;
+  return phi((sr-star)*Math.sqrt(T-1)/Math.sqrt(f));
+}
+function expectedMaxSharpe(v,n){
+  if(n<=1)return 0;
+  return Math.sqrt(v)*((1-EULER)*phiInv(1-1/n)+EULER*phiInv(1-1/(n*Math.E)));
+}
+function minTRL(sr,star,g3,g4,alpha){
+  if(sr<=star)return Infinity;
+  return 1+varianceFactor(sr,g3,g4)*Math.pow(phiInv(alpha)/(sr-star),2);
+}
+
+/* ---------- deterministic PRNG so a market can be replayed ---------- */
+function rng(seed){
+  var s=seed>>>0||1;
+  return function(){s^=s<<13;s>>>=0;s^=s>>17;s^=s<<5;s>>>=0;return s/4294967296;};
+}
+function gauss(u){                                   // Box-Muller
+  var a=Math.max(u(),1e-12),b=u();
+  return Math.sqrt(-2*Math.log(a))*Math.cos(2*Math.PI*b);
+}
+
+/* ================= HERO: mining a market that contains nothing ================= */
+var T=756, cv=document.getElementById("mine"), cx=cv.getContext("2d");
+var market=[], curves=[], best=null, allSharpe=[], seed=17, timer=null;
+
+function css(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim();}
+
+function newMarket(s){
+  seed=s; var u=rng(s); market=[];
+  for(var t=0;t<T;t++) market.push(gauss(u)*0.011);   // zero drift: no signal, by construction
+  curves=[]; allSharpe=[]; best=null;
+}
+function sharpeOf(r){
+  var n=r.length,m=0,i;
+  for(i=0;i<n;i++)m+=r[i]; m/=n;
+  var v=0; for(i=0;i<n;i++)v+=(r[i]-m)*(r[i]-m);
+  v/=(n-1);
+  return v>0?m/Math.sqrt(v)*Math.sqrt(K):0;
+}
+function tryStrategy(u){
+  /* a persistent random position sequence - trading the noise, nothing more */
+  var flip=0.02+u()*0.12, pos=u()<0.5?1:-1, r=[], eq=[], c=0;
+  for(var t=0;t<T;t++){
+    if(u()<flip) pos=-pos;
+    var x=market[t]*pos; r.push(x); c+=x; eq.push(c);
+  }
+  var sr=sharpeOf(r);
+  allSharpe.push(sr);
+  var rec={eq:eq,sr:sr};
+  curves.push(rec);
+  if(curves.length>240) curves.shift();
+  if(!best||sr>best.sr) best=rec;
+  return rec;
+}
+function median(a){
+  var b=a.slice().sort(function(x,y){return x-y;}),h=b.length>>1;
+  return b.length%2?b[h]:(b[h-1]+b[h])/2;
+}
+function draw(){
+  var w=cv.width,h=cv.height;
+  cx.clearRect(0,0,w,h);
+  var lo=0,hi=0,i,j;
+  for(i=0;i<curves.length;i++){var e=curves[i].eq;
+    for(j=0;j<e.length;j+=8){if(e[j]<lo)lo=e[j];if(e[j]>hi)hi=e[j];}}
+  if(best){for(j=0;j<best.eq.length;j++){if(best.eq[j]<lo)lo=best.eq[j];if(best.eq[j]>hi)hi=best.eq[j];}}
+  var pad=(hi-lo)*0.12+1e-6; lo-=pad; hi+=pad;
+  var Y=function(v){return h-((v-lo)/(hi-lo))*h;};
+  cx.strokeStyle=css("--rule-strong"); cx.lineWidth=2; cx.setLineDash([7,7]);
+  cx.beginPath(); cx.moveTo(0,Y(0)); cx.lineTo(w,Y(0)); cx.stroke(); cx.setLineDash([]);
+  cx.strokeStyle=css("--graphite"); cx.lineWidth=1.6; cx.globalAlpha=0.5;
+  for(i=0;i<curves.length;i++){
+    if(curves[i]===best)continue;
+    var e=curves[i].eq; cx.beginPath();
+    for(j=0;j<e.length;j++){var x=j/(T-1)*w; if(j)cx.lineTo(x,Y(e[j])); else cx.moveTo(x,Y(e[j]));}
+    cx.stroke();
+  }
+  cx.globalAlpha=1;
+  if(best){
+    cx.strokeStyle=css("--gold-line"); cx.lineWidth=3.4; cx.beginPath();
+    for(j=0;j<best.eq.length;j++){var x2=j/(T-1)*w; if(j)cx.lineTo(x2,Y(best.eq[j])); else cx.moveTo(x2,Y(best.eq[j]));}
+    cx.stroke();
+  }
+}
+function paintReadout(){
+  document.getElementById("r-n").textContent=allSharpe.length;
+  document.getElementById("r-sr").textContent=best?best.sr.toFixed(2):"—";
+  document.getElementById("r-med").textContent=allSharpe.length?median(allSharpe).toFixed(2):"—";
+}
+function search(n,animate){
+  if(timer){clearInterval(timer);timer=null;}
+  var u=rng(seed*7919+allSharpe.length+1), done=0;
+  var reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if(!animate||reduce){
+    for(var i=0;i<n;i++)tryStrategy(u);
+    draw();paintReadout();return;
+  }
+  timer=setInterval(function(){
+    for(var k=0;k<3&&done<n;k++,done++)tryStrategy(u);
+    draw();paintReadout();
+    if(done>=n){clearInterval(timer);timer=null;}
+  },28);
+}
+document.getElementById("again").addEventListener("click",function(){
+  newMarket((Math.random()*1e9)|0); paintReadout(); search(160,true);
+});
+document.getElementById("more").addEventListener("click",function(){search(100,true);});
+newMarket(17); search(160,true);
+window.addEventListener("resize",function(){draw();});
+
+/* ================= THE DEFLATOR ================= */
+var D={sr:"i-sr",yr:"i-yr",n:"i-n",sk:"i-sk",ku:"i-ku"};
+function num(id){return parseFloat(document.getElementById(id).value);}
+function setText(id,t){document.getElementById(id).textContent=t;}
+
+function deflate(){
+  var srA=num(D.sr), years=num(D.yr), trials=Math.round(num(D.n)),
+      g3=num(D.sk), g4=num(D.ku);
+  setText("o-sr",srA.toFixed(2)); setText("o-yr",years.toFixed(1));
+  setText("o-n",trials); setText("o-sk",g3.toFixed(2)); setText("o-ku",g4.toFixed(1));
+
+  var Tobs=Math.max(3,Math.round(years*K)), sr=srA/Math.sqrt(K);
+  var f=varianceFactor(sr,g3,g4);
+  if(f<=0){
+    setText("o-psr","—");setText("o-bar","—");setText("o-dsr","—");
+    setText("o-trl","—");setText("o-be","—");
+    setText("o-note","Those moments are not internally consistent: the implied variance of "+
+      "the Sharpe ratio is negative. Move skew or kurtosis back toward a plausible pair.");
+    return;
+  }
+  var vAnn=0.5, v=vAnn/K;                      /* spread of Sharpe across trials */
+  var p=psr(sr,0,Tobs,g3,g4);
+  var bar=trials>1?expectedMaxSharpe(v,trials):0;
+  var dsr=trials>1?psr(sr,bar,Tobs,g3,g4):p;
+  var trl=minTRL(sr,0,g3,g4,0.95)/K;
+
+  var be=null;                                  /* attempts at which DSR falls below .95 */
+  if(psr(sr,expectedMaxSharpe(v,2),Tobs,g3,g4)<0.95) be=2;
+  else if(psr(sr,expectedMaxSharpe(v,1e6),Tobs,g3,g4)>=0.95) be=null;
+  else{var a=2,b=1e6; while(a+1<b){var m=Math.floor((a+b)/2);
+        if(psr(sr,expectedMaxSharpe(v,m),Tobs,g3,g4)>=0.95)a=m;else b=m;} be=b;}
+
+  setText("o-psr",p.toFixed(3));
+  setText("o-bar",(bar*Math.sqrt(K)).toFixed(2));
+  setText("o-dsr",dsr.toFixed(3));
+  setText("o-trl",isFinite(trl)?trl.toFixed(1)+" yr":"never");
+  setText("o-be",be===null?"over 1,000,000":be.toLocaleString());
+
+  var dEl=document.getElementById("o-dsr");
+  dEl.className="v "+(dsr>=0.95?"good":"bad");
+  var tEl=document.getElementById("o-trl");
+  tEl.className="v "+(isFinite(trl)&&trl<=years?"good":"bad");
+
+  var chip=document.getElementById("o-chip"), label, cls, note;
+  if(dsr>=0.95){cls="good";label="Survives the search";
+    note="Not proof that it works — only that this particular way of being wrong has been "+
+         "ruled out. It still assumes you counted your attempts honestly.";}
+  else if(dsr>=0.5){cls="warn";label="Not proven";
+    note="Better than a coin flip, short of evidence. At this Sharpe you would need "+
+         (isFinite(trl)?trl.toFixed(1):"more")+" years of record, or fewer attempts, before it means anything.";}
+  else{cls="bad";label="This is what luck looks like";
+    note="The best of "+trials.toLocaleString()+" worthless attempts would score about "+
+         (bar*Math.sqrt(K)).toFixed(2)+" annualised. Yours is "+srA.toFixed(2)+".";}
+  chip.className="chip "+cls;
+  chip.lastElementChild.textContent=label;
+  setText("o-note",note);
+}
+Object.keys(D).forEach(function(k){
+  document.getElementById(D[k]).addEventListener("input",deflate);
+});
+deflate();
+
+/* ================= THE CLUSTER TRAP ================= */
+function cluster(){
+  var days=Math.round(num("c-d")), per=Math.round(num("c-m")),
+      p=num("c-p"), rho=num("c-r");
+  setText("oc-d",days); setText("oc-m",per);
+  setText("oc-p",p.toFixed(3)); setText("oc-r",rho.toFixed(2));
+
+  var n=days*per, deff=1+(per-1)*rho, neff=n/deff;
+  setText("oc-n",n.toLocaleString());
+  setText("oc-deff",deff.toFixed(2));
+  setText("oc-neff",Math.round(neff).toLocaleString());
+
+  var z=1.959963984540054;
+  var seN=Math.sqrt(p*(1-p)/n), seH=Math.sqrt(p*(1-p)/neff);
+  var ci=[[p-z*seN,p+z*seN],[p-z*seH,p+z*seH]];
+  var span=Math.max(0.06,Math.abs(p-0.5)*2.2, (ci[1][1]-ci[1][0])*1.25);
+  var lo=0.5-span, hi=0.5+span;
+  var X=function(v){return Math.max(0,Math.min(100,(v-lo)/(hi-lo)*100));};
+
+  [["track-n",ci[0],"oc-cin"],["track-h",ci[1],"oc-cih"]].forEach(function(row){
+    var el=document.getElementById(row[0]);
+    el.querySelector(".zero").style.left=X(0.5)+"%";
+    var bar=el.querySelector(".ci");
+    bar.style.left=X(row[1][0])+"%";
+    bar.style.width=Math.max(0.6,X(row[1][1])-X(row[1][0]))+"%";
+    setText(row[2],row[1][0].toFixed(3)+" – "+row[1][1].toFixed(3));
+    var pt=el.querySelector(".pt");
+    if(!pt){pt=document.createElement("span");pt.className="pt";el.appendChild(pt);}
+    pt.style.left=X(p)+"%";
+  });
+
+  var honest=ci[1][0]>0.5, naive=ci[0][0]>0.5;
+  var chip=document.getElementById("oc-chip"), cls,label;
+  if(honest){cls="good";label="Beats a coin flip either way";}
+  else if(naive){cls="bad";label="Significant only if you miscount";}
+  else{cls="warn";label="Not distinguishable from a coin flip";}
+  chip.className="chip "+cls;
+  chip.lastElementChild.textContent=label;
+}
+["c-d","c-m","c-p","c-r"].forEach(function(id){
+  document.getElementById(id).addEventListener("input",cluster);
+});
+cluster();
+})();
+</script>
