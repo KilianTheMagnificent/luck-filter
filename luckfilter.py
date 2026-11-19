@@ -743,10 +743,14 @@ def binomial_test(successes, n, p0):
     """Exact one-sided binomial p-value, P(X >= successes) under rate p0."""
     if not 0.0 <= p0 <= 1.0:
         raise LuckFilterError("p0 must lie in [0, 1]")
+    if successes <= 0:
+        return 1.0
+    if successes > n:
+        return 0.0
     if p0 == 0.0:
-        return 0.0 if successes > 0 else 1.0
+        return 0.0
     if p0 == 1.0:
-        return 1.0 if successes >= n else 0.0
+        return 1.0
     lp, lq = math.log(p0), math.log1p(-p0)
     return min(1.0, _sum_exp([_log_comb(n, k) + k * lp + (n - k) * lq
                               for k in range(successes, n + 1)]))
