@@ -718,19 +718,19 @@ def _():
 
 @check("duplicate column names are refused rather than silently collapsed")
 def _():
-    d = tempfile.mkdtemp()
-    path = os.path.join(d, "dupe.csv")
-    rng = random.Random(8)
-    with open(path, "w") as fh:
-        fh.write("date,alpha,alpha\n")
-        for i in range(50):
-            fh.write("%d,%.6f,%.6f\n" % (i, rng.gauss(0, .01), rng.gauss(0, .01)))
-    try:
-        L.load_returns(path)
-    except L.LuckFilterError as exc:
-        assert "duplicate" in str(exc)
-        return
-    raise AssertionError("duplicate columns accepted")
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "dupe.csv")
+        rng = random.Random(8)
+        with open(path, "w") as fh:
+            fh.write("date,alpha,alpha\n")
+            for i in range(50):
+                fh.write("%d,%.6f,%.6f\n" % (i, rng.gauss(0, .01), rng.gauss(0, .01)))
+        try:
+            L.load_returns(path)
+        except L.LuckFilterError as exc:
+            assert "duplicate" in str(exc)
+            return
+        raise AssertionError("duplicate columns accepted")
 
 
 @check("one flat configuration is dropped, not fatal to the whole grid")
@@ -761,49 +761,107 @@ def _():
 
 @check("CSV round trip: returns, prices, and a directional ledger")
 def _():
-    d = tempfile.mkdtemp()
-    rng = random.Random(8)
-    p1 = os.path.join(d, "r.csv")
-    with open(p1, "w") as fh:
-        fh.write("date,alpha,beta\n")
-        for i in range(60):
-            fh.write("2026-01-%02d,%.6f,%.6f\n" % (i % 28 + 1, rng.gauss(0, .01),
-                                                   rng.gauss(0, .01)))
-    series, labels = L.load_returns(p1)
-    names, matrix, _ = L.align(series, labels)
-    assert names == ["alpha", "beta"] and len(matrix) == 60
+    with tempfile.TemporaryDirectory() as d:
+        rng = random.Random(8)
+        p1 = os.path.join(d, "r.csv")
+        with open(p1, "w") as fh:
+            fh.write("date,alpha,beta\n")
+            for i in range(60):
+                fh.write("2026-01-%02d,%.6f,%.6f\n" % (i % 28 + 1, rng.gauss(0, .01),
+                                                       rng.gauss(0, .01)))
+        series, labels = L.load_returns(p1)
+        names, matrix, _ = L.align(series, labels)
+        assert names == ["alpha", "beta"] and len(matrix) == 60
 
-    p2 = os.path.join(d, "p.csv")
-    with open(p2, "w") as fh:
-        fh.write("date,px\n")
-        v = 100.0
-        for i in range(30):
-            v *= 1 + rng.gauss(0, .01)
-            fh.write("2026-02-%02d,%.4f\n" % (i % 28 + 1, v))
-    series, labels = L.load_returns(p2, prices=True)
-    names, matrix, _ = L.align(series, labels)
-    assert names == ["px"] and len(matrix) == 29        # first row has no return
+        p2 = os.path.join(d, "p.csv")
+        with open(p2, "w") as fh:
+            fh.write("date,px\n")
+            v = 100.0
+            for i in range(30):
+                v *= 1 + rng.gauss(0, .01)
+                fh.write("2026-02-%02d,%.4f\n" % (i % 28 + 1, v))
+        series, labels = L.load_returns(p2, prices=True)
+        names, matrix, _ = L.align(series, labels)
+        assert names == ["px"] and len(matrix) == 29        # first row has no return
 
-    p3 = os.path.join(d, "c.csv")
-    with open(p3, "w") as fh:
-        fh.write("date,ticker,predicted,actual,confidence\n")
-        for i in range(80):
-            fh.write("2026-03-%02d,AAA,%s,%s,0.55\n" % (
-                i % 10 + 1, "up" if i % 3 else "down", "up" if i % 4 else "down"))
-    pred, actual, dates, conf = L.load_directional(p3)
-    assert len(pred) == 80 and len(set(dates)) == 10 and conf[0] == 0.55
+        p3 = os.path.join(d, "c.csv")
+        with open(p3, "w") as fh:
+            fh.write("date,ticker,predicted,actual,confidence\n")
+            for i in range(80):
+                fh.write("2026-03-%02d,AAA,%s,%s,0.55\n" % (
+                    i % 10 + 1, "up" if i % 3 else "down", "up" if i % 4 else "down"))
+        pred, actual, dates, conf = L.load_directional(p3)
+        assert len(pred) == 80 and len(set(dates)) == 10 and conf[0] == 0.55
 
 
 @check("percent-scaled input is converted, not silently mis-scaled")
 def _():
-    d = tempfile.mkdtemp()
-    p = os.path.join(d, "pct.csv")
-    with open(p, "w") as fh:
-        fh.write("date,s\n")
-        for i in range(40):
-            fh.write("2026-04-%02d,%.4f\n" % (i % 28 + 1, 1.5 if i % 2 else -1.0))
-    series, labels = L.load_returns(p, pct=True)
-    assert abs(series[0][1][0]) < 0.02
+    with tempfile.TemporaryDirectory() as d:
+        p = os.path.join(d, "pct.csv")
+        with open(p, "w") as fh:
+            fh.write("date,s\n")
+            for i in range(40):
+                fh.write("2026-04-%02d,%.4f\n" % (i % 28 + 1, 1.5 if i % 2 else -1.0))
+        series, labels = L.load_returns(p, pct=True)
+        assert abs(series[0][1][0]) < 0.02
+
+
+@check("bad CSV inputs fail cleanly with LuckFilterError and CLI exit 1")
+def _():
+    import contextlib
+    import io
+    with tempfile.TemporaryDirectory() as d:
+        cases = [
+            ("header_only.csv", "date,a\n", []),
+            ("no_numeric.csv", "date,note\n2026-01-01,hello\n2026-01-02,world\n2026-01-03,foo\n", []),
+            ("bad_dir.csv", "date,foo,bar\n2026-01-01,1,2\n", ["--directional"]),
+            ("few_dir.csv", "predicted,actual\nup,up\ndown,down\n", ["--directional"]),
+        ]
+        for fname, body, flags in cases:
+            p = os.path.join(d, fname)
+            with open(p, "w") as fh:
+                fh.write(body)
+            out, err = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                rc = L.main([p] + flags)
+            assert rc == 1, (fname, rc)
+            assert err.getvalue().startswith("luckfilter: "), (fname, err.getvalue())
+
+
+@check("--demo --json emits pure valid JSON without mixed prose")
+def _():
+    import contextlib
+    import io
+    import json
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        rc = L.main(["--demo", "--json", "--obs", "240", "--boot", "20", "--blocks", "8"])
+    assert rc == 0, err.getvalue()
+    data = json.loads(out.getvalue())
+    assert data["mode"] == "search"
+    assert "dsr" in data and "pbo" in data and "reality_check" in data and "spa" in data
+    assert "logits" not in data["pbo"]
+
+
+@check("average_correlation O(N*T) identity matches pairwise correlation")
+def _():
+    rng = random.Random(42)
+    cols = [[rng.gauss(0, 1) for _ in range(120)] for _ in range(8)]
+    cols.append([1.0] * 120)  # zero-variance column ignored
+    # naive pairwise
+    zs = []
+    for c in cols:
+        mu = sum(c) / len(c)
+        d = [v - mu for v in c]
+        n = math.sqrt(sum(v * v for v in d))
+        if n > 0:
+            zs.append([v / n for v in d])
+    tot = pairs = 0
+    for i in range(len(zs)):
+        for j in range(i + 1, len(zs)):
+            tot += sum(a * b for a, b in zip(zs[i], zs[j]))
+            pairs += 1
+    close(L.average_correlation(cols), tot / pairs, 1e-12)
 
 
 def run():

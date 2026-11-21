@@ -248,22 +248,21 @@ def average_correlation(columns):
     m = len(columns)
     if m < 2:
         return 0.0
-    z = []
+    valid = []
     for col in columns:
         mu = math.fsum(col) / len(col)
         d = [v - mu for v in col]
         n = math.sqrt(math.fsum(v * v for v in d))
-        z.append([v / n for v in d] if n > 0 else None)
-    total, pairs = 0.0, 0
-    for i in range(m):
-        if z[i] is None:
-            continue
-        for j in range(i + 1, m):
-            if z[j] is None:
-                continue
-            total += math.fsum(a * b for a, b in zip(z[i], z[j]))
-            pairs += 1
-    return total / pairs if pairs else 0.0
+        if n > 0:
+            inv = 1.0 / n
+            valid.append([v * inv for v in d])
+    k = len(valid)
+    if k < 2:
+        return 0.0
+    T = len(valid[0])
+    # sum_{i<j} dot(z_i, z_j) = (||sum_i z_i||^2 - k) / 2 in O(N*T) time
+    sum_sq = math.fsum(math.fsum(z[t] for z in valid) ** 2 for t in range(T))
+    return (sum_sq - k) / (k * (k - 1))
 
 
 def implied_independent_trials(m_trials, rho):
@@ -377,32 +376,42 @@ def probability_of_backtest_overfitting(matrix, s_blocks=16, ddof=1, loss_thresh
     q_total = [math.fsum(q_blocks[s][n] for s in range(s_blocks)) for n in range(N)]
 
     half = block * (s_blocks // 2)
-    logits, is_perf, oos_perf = [], [], []
-    for comb in itertools.combinations(range(s_blocks), s_blocks // 2):
-        a_is = [math.fsum(a_blocks[s][n] for s in comb) for n in range(N)]
-        q_is = [math.fsum(q_blocks[s][n] for s in comb) for n in range(N)]
-        r_is, r_oos = [], []
-        for n in range(N):
-            r_is.append(_sharpe_from_sums(half, a_is[n], q_is[n], shift[n], ddof))
-            r_oos.append(_sharpe_from_sums(half, a_total[n] - a_is[n],
-                                           q_total[n] - q_is[n], shift[n], ddof))
+    n_splits = math.comb(s_blocks, s_blocks // 2)
+    logits = [0.0] * n_splits
+    is_perf = [0.0] * n_splits
+    oos_perf = [0.0] * n_splits
+
+    def _score_split(r_in, r_out):
         # Ties for in-sample best are routine once payoffs are discrete (a
         # prediction ledger, an integer-scored grid), and breaking them by
         # column index would make the answer depend on the order the caller
         # happened to pass the configurations in. Average over the tied set.
-        top = max(r_is)
+        top = max(r_in)
         # Exact float equality would make the tied set depend on the last bit of
         # an intermediate sum, so two algebraically identical routes disagree on
         # binary or integer payoffs. Compare with a tolerance instead.
         tied = [n for n in range(N)
-                if math.isclose(r_is[n], top, rel_tol=1e-12, abs_tol=1e-15)]
-        ranks = _midranks(r_oos)
+                if math.isclose(r_in[n], top, rel_tol=1e-12, abs_tol=1e-15)]
+        ranks = _midranks(r_out)
         omega = math.fsum(ranks[n] for n in tied) / (len(tied) * (N + 1.0))
-        logits.append(math.log(omega / (1.0 - omega)))
-        is_perf.append(top)
-        oos_perf.append(math.fsum(r_oos[n] for n in tied) / len(tied))
+        return (math.log(omega / (1.0 - omega)), top,
+                math.fsum(r_out[n] for n in tied) / len(tied))
 
-    n_splits = len(logits)
+    # Every balanced split containing block 0 is the exact complement of the
+    # split at mirror index (n_splits - 1 - idx), so each pair of Sharpe vectors
+    # only needs to be computed once.
+    for idx, tail in enumerate(itertools.combinations(range(1, s_blocks), s_blocks // 2 - 1)):
+        comb = (0,) + tail
+        r_a, r_b = [], []
+        for n in range(N):
+            a_is = math.fsum(a_blocks[s][n] for s in comb)
+            q_is = math.fsum(q_blocks[s][n] for s in comb)
+            r_a.append(_sharpe_from_sums(half, a_is, q_is, shift[n], ddof))
+            r_b.append(_sharpe_from_sums(half, a_total[n] - a_is,
+                                         q_total[n] - q_is, shift[n], ddof))
+        logits[idx], is_perf[idx], oos_perf[idx] = _score_split(r_a, r_b)
+        mirror = n_splits - 1 - idx
+        logits[mirror], is_perf[mirror], oos_perf[mirror] = _score_split(r_b, r_a)
     pairs = [(x, y) for x, y in zip(is_perf, oos_perf) if math.isfinite(x) and math.isfinite(y)]
     slope = intercept = r2 = float("nan")
     if len(pairs) >= 2:
@@ -450,9 +459,14 @@ def stationary_bootstrap_indices(T, p, rng):
     return idx
 
 
-def _autocov(d, den_T):
+def _autocov_lag(d, den_T, lag):
+    return math.fsum(d[t] * d[t + lag] for t in range(len(d) - lag)) / den_T
+
+
+def _autocov(d, den_T, max_lag=None):
     n = len(d)
-    return [math.fsum(d[t] * d[t + i] for t in range(n - i)) / den_T for i in range(n)]
+    limit = n if max_lag is None else min(n, max_lag + 1)
+    return [_autocov_lag(d, den_T, i) for i in range(limit)]
 
 
 def optimal_block_length(x):
@@ -464,10 +478,17 @@ def optimal_block_length(x):
         return 1.0
     mu = math.fsum(x) / T
     d = [v - mu for v in x]
-    g = _autocov(d, T)
-    if g[0] <= 0:
+    g0 = _autocov_lag(d, T, 0)
+    if g0 <= 0:
         return 1.0
-    rho = [v / g[0] for v in g]
+    g_cache = {0: g0}
+
+    def g_at(lag):
+        val = g_cache.get(lag)
+        if val is None:
+            val = _autocov_lag(d, T, lag)
+            g_cache[lag] = val
+        return val
 
     k_t = max(5, int(math.ceil(math.sqrt(math.log10(T)))))
     crit = 2.0 * math.sqrt(math.log10(T) / T)
@@ -475,7 +496,7 @@ def optimal_block_length(x):
     for k in range(1, T):
         if k + k_t >= T:
             break
-        if all(abs(rho[k + j]) < crit for j in range(1, k_t + 1)):
+        if all(abs(g_at(k + j) / g0) < crit for j in range(1, k_t + 1)):
             m_hat = k
             break
     big_m = min(2 * max(m_hat, 1), int(math.ceil(math.sqrt(T))) + k_t, T - 1)
@@ -483,8 +504,8 @@ def optimal_block_length(x):
     def flat_top(t):
         return min(1.0, max(0.0, 2.0 * (1.0 - abs(t))))
 
-    g_hat = 2.0 * math.fsum(flat_top(k / big_m) * k * g[k] for k in range(1, big_m + 1))
-    s_inf = g[0] + 2.0 * math.fsum(flat_top(k / big_m) * g[k] for k in range(1, big_m + 1))
+    g_hat = 2.0 * math.fsum(flat_top(k / big_m) * k * g_at(k) for k in range(1, big_m + 1))
+    s_inf = g0 + 2.0 * math.fsum(flat_top(k / big_m) * g_at(k) for k in range(1, big_m + 1))
     if g_hat == 0.0 or s_inf <= 0.0:
         return 1.0
     b = (2.0 * g_hat * g_hat / (2.0 * s_inf * s_inf)) ** (1.0 / 3.0) * T ** (1.0 / 3.0)
@@ -498,12 +519,75 @@ def stationary_bootstrap_variance(x, p):
     T = len(x)
     mu = math.fsum(x) / T
     d = [v - mu for v in x]
-    g = _autocov(d, T)
-    total = g[0]
-    for i in range(1, T):
-        kappa = (1.0 - i / T) * (1.0 - p) ** i + (i / T) * (1.0 - p) ** (T - i)
-        total += 2.0 * kappa * g[i]
+    total = _autocov_lag(d, T, 0)
+    if p >= 1.0:
+        return total
+    q = 1.0 - p
+    # Skip middle lags where both (1-p)^i and (1-p)^(T-i) underflow below float64 precision.
+    max_k = int(math.ceil(-37.0 / math.log(q))) if q > 0.0 else 0
+    if 2 * max_k + 1 >= T:
+        lags = range(1, T)
+    else:
+        lags = itertools.chain(range(1, min(T, max_k + 1)), range(max(1, T - max_k), T))
+    for i in lags:
+        kappa = (1.0 - i / T) * (q ** i) + (i / T) * (q ** (T - i))
+        if kappa:
+            total += 2.0 * kappa * _autocov_lag(d, T, i)
     return total
+
+
+def _bootstrap_rc_and_spa(columns, n_boot=2000, p=None, seed=0):
+    """Run White's Reality Check and Hansen's SPA on one shared set of stationary
+    bootstrap draws so analyse_search never resamples the same matrix twice."""
+    N = len(columns)
+    if N < 1:
+        raise LuckFilterError("need at least one candidate strategy")
+    T = len(columns[0])
+    if any(len(c) != T for c in columns):
+        raise LuckFilterError("all candidate columns must have the same length")
+    if p is None:
+        # the longest block any candidate demands: the winner may look iid while
+        # its siblings do not, and too short a block narrows the bootstrap null
+        p = min(optimal_block_length(c) for c in columns)
+    rng = random.Random(seed)
+    means = [math.fsum(c) / T for c in columns]
+    omega = []
+    for c in columns:
+        v = stationary_bootstrap_variance(c, p)
+        omega.append(math.sqrt(v) if v > 0 else 0.0)
+    root_t = math.sqrt(T)
+    v_obs = max(root_t * m for m in means)
+    stat = max(0.0, max((root_t * m / w if w > 0 else 0.0) for m, w in zip(means, omega)))
+
+    a_t = math.sqrt(2.0 * math.log(math.log(T))) if T > math.e else 0.0
+    g_lower = [max(m, 0.0) for m in means]
+    g_cons = [m if (w > 0 and root_t * m / w >= -a_t) else (m if w == 0 else 0.0)
+              for m, w in zip(means, omega)]
+    g_upper = list(means)
+
+    rc_hits = 0
+    spa_counts = [0, 0, 0]
+    for _ in range(n_boot):
+        idx = stationary_bootstrap_indices(T, p, rng)
+        boot = [math.fsum(c[i] for i in idx) / T for c in columns]
+        v_star = max(root_t * (b - m) for b, m in zip(boot, means))
+        if v_star >= v_obs:
+            rc_hits += 1
+        for slot, g in enumerate((g_lower, g_cons, g_upper)):
+            t_star = 0.0
+            for k in range(N):
+                if omega[k] > 0:
+                    val = root_t * (boot[k] - g[k]) / omega[k]
+                    if val > t_star:
+                        t_star = val
+            if t_star >= stat:
+                spa_counts[slot] += 1
+    rc = {"p_value": rc_hits / n_boot, "statistic": v_obs, "n_boot": n_boot,
+          "block_p": p, "best": max(range(N), key=lambda k: means[k])}
+    spa = {"statistic": stat, "p_lower": spa_counts[0] / n_boot,
+           "p_consistent": spa_counts[1] / n_boot, "p_upper": spa_counts[2] / n_boot,
+           "n_boot": n_boot, "block_p": p}
+    return rc, spa
 
 
 def reality_check(columns, n_boot=2000, p=None, seed=0):
@@ -894,19 +978,33 @@ def strategy_grid(px):
     """The kind of parameter sweep a researcher actually runs: three strategy
     families, long-short and long-only, ~190 configurations in total."""
     rets = [0.0] + [px[i] / px[i - 1] - 1.0 for i in range(1, len(px))]
+    sma_cache = {}
+    sd_cache = {}
+
+    def sma(n):
+        if n not in sma_cache:
+            sma_cache[n] = _sma(px, n)
+        return sma_cache[n]
+
+    def rsd(n):
+        if n not in sd_cache:
+            sd_cache[n] = _rolling_sd(px, n)
+        return sd_cache[n]
+
     out = {}
     for ls in (True, False):
         tag = "ls" if ls else "lo"
         for fast in (3, 5, 8, 10, 13, 15, 20, 25):
+            a = sma(fast)
             for slow in (30, 40, 50, 60, 80, 100, 120, 150):
-                a, b = _sma(px, fast), _sma(px, slow)
+                b = sma(slow)
                 pos = [0.0] * len(px)
                 for i in range(len(px)):
                     if a[i] is not None and b[i] is not None:
                         pos[i] = 1.0 if a[i] > b[i] else (-1.0 if ls else 0.0)
                 out["cross_%d_%d_%s" % (fast, slow, tag)] = _apply(rets, pos)
         for win in (10, 15, 20, 30, 45, 60):
-            m, sd = _sma(px, win), _rolling_sd(px, win)
+            m, sd = sma(win), rsd(win)
             for k in (0.5, 1.0, 1.5, 2.0):
                 pos = [0.0] * len(px)
                 for i in range(len(px)):
@@ -997,7 +1095,7 @@ def read_table(path):
         rows = [{k: (v.replace(".", "").replace(",", ".") if isinstance(v, str) and "," in v else v)
                  for k, v in r.items()} for r in rows]
     if not rows:
-        raise ValueError("%s has no data rows" % path)
+        raise LuckFilterError("%s has no data rows" % path)
     fields = [f for f in rows[0].keys() if f is not None]
     return fields, rows
 
@@ -1023,7 +1121,7 @@ def load_returns(path, pct=False, prices=False):
             continue                                   # not a numeric column
         series.append((f, col))
     if not series:
-        raise ValueError("no numeric columns found in %s" % path)
+        raise LuckFilterError("no numeric columns found in %s" % path)
 
     if prices:
         conv = []
@@ -1059,7 +1157,7 @@ def load_directional(path):
     pcol = _pick(fields, _PRED_NAMES)
     acol = _pick(fields, _ACTUAL_NAMES)
     if not pcol or not acol:
-        raise ValueError(
+        raise LuckFilterError(
             "directional mode needs a predicted column (one of %s) and an actual "
             "column (one of %s); found %s" % (", ".join(_PRED_NAMES[:3]), ", ".join(_ACTUAL_NAMES[:3]), fields))
     dcol = _pick(fields, _DATE_NAMES)
@@ -1086,7 +1184,7 @@ def load_directional(path):
         dates.append((r.get(dcol) or "").strip() if dcol else str(len(pred)))
         conf.append(_to_float(r.get(ccol)) if ccol else None)
     if len(pred) < 10:
-        raise ValueError("only %d scorable predictions in %s" % (len(pred), path))
+        raise LuckFilterError("only %d scorable predictions in %s" % (len(pred), path))
     return pred, actual, dates, (conf if ccol and any(c is not None for c in conf) else None)
 
 
@@ -1165,8 +1263,7 @@ def analyse_search(names, matrix, periods_per_year=252, n_boot=2000, s_blocks=16
 
     if N >= 2 and T >= s_blocks * 2:
         out["pbo"] = probability_of_backtest_overfitting(matrix, s_blocks=s_blocks)
-    out["reality_check"] = reality_check(columns, n_boot=n_boot, seed=seed)
-    out["spa"] = superior_predictive_ability(columns, n_boot=n_boot, seed=seed)
+    out["reality_check"], out["spa"] = _bootstrap_rc_and_spa(columns, n_boot=n_boot, seed=seed)
     return out
 
 
@@ -1609,16 +1706,17 @@ def _demo(args):
     rep = analyse_search(names, matrix, periods_per_year=args.periods,
                          n_boot=args.boot, s_blocks=args.blocks, seed=args.seed,
                          label="demo: a parameter sweep over pure noise")
-    print(render(rep))
-    if args.seed == 17:
-        provenance = ("  Seed 17 is not cherry-picked - across seeds 1-25 it is the MEDIAN\n"
-                      "  draw, which is the only honest way to pick a default in a tool\n"
-                      "  about selection bias.")
-    else:
-        provenance = ("  Seed %d is one draw of many and its outcome is not representative\n"
-                      "  of anything. Seed 17 is the median of seeds 1-25." % args.seed)
-    print(_c(DEMO_NOTE % provenance, "dim"))
-    print()
+    if not args.json:
+        print(render(rep))
+        if args.seed == 17:
+            provenance = ("  Seed 17 is not cherry-picked - across seeds 1-25 it is the MEDIAN\n"
+                          "  draw, which is the only honest way to pick a default in a tool\n"
+                          "  about selection bias.")
+        else:
+            provenance = ("  Seed %d is one draw of many and its outcome is not representative\n"
+                          "  of anything. Seed 17 is the median of seeds 1-25." % args.seed)
+        print(_c(DEMO_NOTE % provenance, "dim"))
+        print()
     return rep
 
 

@@ -106,7 +106,7 @@ header.hero .wrap{position:relative;padding-top:64px;padding-bottom:8px}
 }
 .readout .v.gold{color:var(--gold)}
 .readout .v.small{font-size:17px}
-.stage canvas{display:block;width:100%;height:340px}
+.stage canvas{display:block;width:100%;height:clamp(210px,38vw,340px)}
 .stage-foot{
   display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;
   padding:14px 20px;border-top:1px solid var(--rule);background:var(--surface-2);
@@ -411,11 +411,16 @@ footer{border-top:1px solid var(--rule);padding:44px 0 64px;color:var(--muted);f
   <div class="wrap"><div class="col">
     <h2>The tool.</h2>
     <p>
-      This page is the argument. <code>luckfilter.py</code> is the instrument — one file,
-      no dependencies, no install. It runs the demonstration above on real data and prints a
-      verdict card.
+      This page is the argument.
+      <a href="https://github.com/KilianTheMagnificent/luck-filter"><code>luck-filter</code></a>
+      (<code>luckfilter.py</code>) is the instrument — one Python file, standard library only,
+      no third-party dependencies. Run it straight from GitHub with <code>uvx</code>, install it
+      with <code>pipx</code>, or download <code>luckfilter.py</code> directly:
     </p>
-    <pre><code>python3 luckfilter.py --demo                    <span style="color:var(--faint)"># mine noise, watch it die</span>
+    <pre><code>uvx --from git+https://github.com/KilianTheMagnificent/luck-filter luck-filter --demo
+pipx install git+https://github.com/KilianTheMagnificent/luck-filter
+
+python3 luckfilter.py --demo                    <span style="color:var(--faint)"># mine noise, watch it die</span>
 python3 luckfilter.py returns.csv --trials 200  <span style="color:var(--faint)"># one series, declare the search</span>
 python3 luckfilter.py grid.csv                  <span style="color:var(--faint)"># many columns, many candidates</span>
 python3 luckfilter.py calls.csv --directional   <span style="color:var(--faint)"># a ledger of up/down calls</span></code></pre>
@@ -457,7 +462,8 @@ python3 luckfilter.py calls.csv --directional   <span style="color:var(--faint)"
       <b>Bailey &amp; López de Prado (2014)</b> to the printed digit: expected best-of-100
       Sharpe 0.1132, deflated Sharpe 0.9004, breakeven at 47 attempts. The calculator above
       uses a 252-day year, so it reads 0.9006 rather than 0.9004; the breakeven is 47 either
-      way.
+      way. Source code and CLI docs live on
+      <a href="https://github.com/KilianTheMagnificent/luck-filter">GitHub</a>.
     </p>
   </div></div>
 </footer>
@@ -575,8 +581,19 @@ function median(a){
   var b=a.slice().sort(function(x,y){return x-y;}),h=b.length>>1;
   return b.length%2?b[h]:(b[h-1]+b[h])/2;
 }
+var cvW=800, cvH=340;
+function sizeCanvas(){
+  var rect=cv.getBoundingClientRect();
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+  cvW=Math.max(1,rect.width||800);
+  cvH=Math.max(1,rect.height||340);
+  var pw=Math.round(cvW*dpr), ph=Math.round(cvH*dpr);
+  if(cv.width!==pw||cv.height!==ph){cv.width=pw;cv.height=ph;}
+  cx.setTransform(dpr,0,0,dpr,0,0);
+}
 function draw(){
-  var w=cv.width,h=cv.height;
+  sizeCanvas();
+  var w=cvW,h=cvH;
   cx.clearRect(0,0,w,h);
   var lo=0,hi=0,i,j;
   for(i=0;i<curves.length;i++){var e=curves[i].eq;
@@ -584,9 +601,9 @@ function draw(){
   if(best){for(j=0;j<best.eq.length;j++){if(best.eq[j]<lo)lo=best.eq[j];if(best.eq[j]>hi)hi=best.eq[j];}}
   var pad=(hi-lo)*0.12+1e-6; lo-=pad; hi+=pad;
   var Y=function(v){return h-((v-lo)/(hi-lo))*h;};
-  cx.strokeStyle=css("--rule-strong"); cx.lineWidth=2; cx.setLineDash([7,7]);
+  cx.strokeStyle=css("--rule-strong"); cx.lineWidth=1; cx.setLineDash([5,5]);
   cx.beginPath(); cx.moveTo(0,Y(0)); cx.lineTo(w,Y(0)); cx.stroke(); cx.setLineDash([]);
-  cx.strokeStyle=css("--graphite"); cx.lineWidth=1.6; cx.globalAlpha=0.5;
+  cx.strokeStyle=css("--graphite"); cx.lineWidth=1; cx.globalAlpha=0.5;
   for(i=0;i<curves.length;i++){
     if(curves[i]===best)continue;
     var e=curves[i].eq; cx.beginPath();
@@ -595,7 +612,7 @@ function draw(){
   }
   cx.globalAlpha=1;
   if(best){
-    cx.strokeStyle=css("--gold-line"); cx.lineWidth=3.4; cx.beginPath();
+    cx.strokeStyle=css("--gold-line"); cx.lineWidth=2.2; cx.beginPath();
     for(j=0;j<best.eq.length;j++){var x2=j/(T-1)*w; if(j)cx.lineTo(x2,Y(best.eq[j])); else cx.moveTo(x2,Y(best.eq[j]));}
     cx.stroke();
   }
@@ -650,7 +667,7 @@ function deflate(){
   var p=psr(sr,0,Tobs,g3,g4);
   var bar=trials>1?expectedMaxSharpe(v,trials):0;
   var dsr=trials>1?psr(sr,bar,Tobs,g3,g4):p;
-  var trl=minTRL(sr,0,g3,g4,0.95)/K;
+  var trl=minTRL(sr,bar,g3,g4,0.95)/K;
 
   var be=null;                                  /* attempts at which DSR falls below .95 */
   if(psr(sr,expectedMaxSharpe(v,2),Tobs,g3,g4)<0.95) be=2;
@@ -665,20 +682,22 @@ function deflate(){
   setText("o-be",be===null?"over 1,000,000":be.toLocaleString());
 
   var dEl=document.getElementById("o-dsr");
-  dEl.className="v "+(dsr>=0.95?"good":"bad");
+  dEl.className="v "+(dsr>=0.95?"good":(dsr>=0.5?"gold":"bad"));
   var tEl=document.getElementById("o-trl");
-  tEl.className="v "+(isFinite(trl)&&trl<=years?"good":"bad");
+  tEl.className="v "+(isFinite(trl)&&trl<=years?"good":(isFinite(trl)?"gold":"bad"));
 
   var chip=document.getElementById("o-chip"), label, cls, note;
   if(dsr>=0.95){cls="good";label="Survives the search";
     note="Not proof that it works — only that this particular way of being wrong has been "+
          "ruled out. It still assumes you counted your attempts honestly.";}
   else if(dsr>=0.5){cls="warn";label="Not proven";
-    note="Better than a coin flip, short of evidence. At this Sharpe you would need "+
-         (isFinite(trl)?trl.toFixed(1):"more")+" years of record, or fewer attempts, before it means anything.";}
+    note="Better than a coin flip, short of 95% confidence against the noise bar. At this Sharpe "+
+         "and trial count you would need "+(isFinite(trl)?trl.toFixed(1):"more")+
+         " years of record (you have "+years.toFixed(1)+"), or fewer attempts, to clear it.";}
   else{cls="bad";label="This is what luck looks like";
     note="The best of "+trials.toLocaleString()+" worthless attempts would score about "+
-         (bar*Math.sqrt(K)).toFixed(2)+" annualised. Yours is "+srA.toFixed(2)+".";}
+         (bar*Math.sqrt(K)).toFixed(2)+" annualised. Yours is "+srA.toFixed(2)+
+         ", so no length of record clears that bar.";}
   chip.className="chip "+cls;
   chip.lastElementChild.textContent=label;
   setText("o-note",note);
