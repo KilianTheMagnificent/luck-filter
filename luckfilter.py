@@ -46,7 +46,7 @@ import statistics
 import sys
 from statistics import NormalDist
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 EULER_GAMMA = 0.5772156649015329
 _ND = NormalDist()

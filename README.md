@@ -120,7 +120,7 @@ papers and the properties that must hold by construction:
 
 ## Status
 
-`v1.0.0` — working, standalone local CLI/library and offline HTML companion with 55 automated
+`v1.0.1` — working, standalone local CLI/library and offline HTML companion with 55 automated
 self-checks passing on Python 3.9+.
 
 Research and analysis only. It runs completely locally with zero network calls and does not
