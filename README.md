@@ -96,7 +96,7 @@ optional `confidence` column in [0, 1] turns on calibration scoring.
 ## Verification
 
 ```sh
-python3 -B test_luckfilter.py        # 55 checks
+python3 -B test_luckfilter.py        # 58 checks
 ```
 
 These are mostly not "does it run" tests. They are the published numbers from the source
@@ -120,7 +120,7 @@ papers and the properties that must hold by construction:
 
 ## Status
 
-`v1.0.1` — working, standalone local CLI/library and offline HTML companion with 55 automated
+`v1.0.1` — working, standalone local CLI/library and offline HTML companion with 58 automated
 self-checks passing on Python 3.9+.
 
 Research and analysis only. It runs completely locally with zero network calls and does not
@@ -245,7 +245,7 @@ position.
 ## Files
 
 - `luckfilter.py` — the whole tool
-- `test_luckfilter.py` — the 55 self-checks above
+- `test_luckfilter.py` — the 58 self-checks above
 - `skill-or-luck.html` — an interactive version of the argument, self-contained, no network ([live version](https://kilianthemagnificent.github.io/luck-filter/))
 - `pyproject.toml` — minimal packaging metadata for `uvx` / `pipx` / `pip` installs
 
